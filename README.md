@@ -1,6 +1,11 @@
 # Qless::ThreadedWorker
 
-TODO: Write a gem description
+This gem provides an alternative worker model for Qless. Qless currently implements a worker inspired by Resque (one process per worker), this gem adds an implementation inspired by Sidekiq (one thread per worker).
+
+We attempt to preserve behaviour wrt to signals and regular Qless behaviour where possible. These are the areas that we fail to do so:
+
+1.
+2. 
 
 ## Installation
 
@@ -18,7 +23,34 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+Qless ships with some rake tasks for their process-based worker. Simply use the rake tasks provided by this gem in their place to spin up a threaded worker.
+
+``` ruby
+require 'qless/threaded_worker_tasks'
+
+namespace :qless do
+  task :setup do
+    require 'my_app/environment' # to ensure all job classes are loaded
+
+    # Set options via environment variables
+    # The only required option is QUEUES; the
+    # rest have reasonable defaults.
+    ENV['REDIS_URL'] ||= 'redis://some-host:7000/3'
+    ENV['QUEUES'] ||= 'fizz,buzz'
+    ENV['JOB_RESERVER'] ||= 'Ordered'
+    ENV['INTERVAL'] ||= '10' # 10 seconds
+    ENV['VERBOSE'] ||= 'true'
+  end
+end
+```
+
+Then run the `qless:work` rake task:
+
+    rake qless:threaded_worker
+
+## Dependencies
+
+Celluloid
 
 ## Contributing
 
