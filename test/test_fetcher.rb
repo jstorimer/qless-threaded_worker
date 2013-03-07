@@ -1,4 +1,5 @@
 require_relative 'helper'
+require 'qless/threaded_worker/fetcher'
 
 describe Qless::ThreadedWorker::Fetcher do
   before do
