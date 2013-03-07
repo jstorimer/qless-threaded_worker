@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'qless-threaded_worker/version'
+require 'qless/threaded_worker/version'
 
 Gem::Specification.new do |gem|
   gem.name          = "qless-threaded_worker"
@@ -19,4 +19,6 @@ Gem::Specification.new do |gem|
 
   gem.add_runtime_dependency 'qless', '~> 0.9.2'
   gem.add_runtime_dependency 'celluloid', '~> 0.12.4'
+
+  gem.add_development_dependency 'rr'
 end
