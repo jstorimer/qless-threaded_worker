@@ -1,7 +1,2 @@
-require "qless-threaded_worker/version"
+require "qless/threaded_worker"
 
-module Qless
-  module ThreadedWorker
-    # Your code goes here...
-  end
-end

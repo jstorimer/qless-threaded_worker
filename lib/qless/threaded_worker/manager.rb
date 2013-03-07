@@ -1,6 +1,6 @@
 require 'celluloid'
 
-require 'sidekiq/util'
+#require 'sidekiq/util'
 require 'sidekiq/processor'
 require 'sidekiq/fetch'
 
