@@ -2,10 +2,12 @@ require 'minitest/autorun'
 require 'rr'
 
 require 'qless'
-require 'qless/threaded_worker'
 
 ENV['REDIS_URL'] = "redis://127.0.0.1:6379/11"
 ENV['VVERBOSE'] = 'true'
+
+# ghetto clear redis
+`redis-cli -n 11 flushdb`
 
 # Lifted from Qless test suite
 class MiniTest::Unit::TestCase
