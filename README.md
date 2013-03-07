@@ -30,6 +30,8 @@ Or install it yourself as:
 
 Qless ships with some rake tasks for their process-based worker. Simply use the rake tasks provided by this gem in their place to spin up a threaded worker.
 
+We support the same environment variables that Qless does, and a few more gem-specific ones. They're first in the list.
+
 ``` ruby
 require 'qless/threaded_worker_tasks'
 
@@ -40,6 +42,7 @@ namespace :qless do
     # Set options via environment variables
     # The only required option is QUEUES; the
     # rest have reasonable defaults.
+    ENV['CONCURRENCY'] = 15 # number of processsor threads
     ENV['REDIS_URL'] ||= 'redis://some-host:7000/3'
     ENV['QUEUES'] ||= 'fizz,buzz'
     ENV['JOB_RESERVER'] ||= 'Ordered'
