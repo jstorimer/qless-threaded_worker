@@ -4,7 +4,12 @@ This gem provides an alternative worker model for Qless. Qless currently impleme
 
 We attempt to preserve behaviour wrt to signals and regular Qless behaviour where possible. These are the areas that we fail to do so:
 
-1.
+1. Since the 'middleware chain' is just implemented as series of includes on a class, rather than a real set of objects, you'll have to make sure you include your middlewares on our worker class, rather than the core one.
+
+  class Qless::ThreadedWorker::Processor
+    include Middleware::Foo
+  end
+
 2. 
 
 ## Installation

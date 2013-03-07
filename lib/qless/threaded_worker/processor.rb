@@ -1,114 +1,85 @@
 require 'celluloid'
-require 'sidekiq/util'
+require 'qless/threaded_worker/util'
 
-require 'sidekiq/middleware/server/active_record'
-require 'sidekiq/middleware/server/retry_jobs'
-require 'sidekiq/middleware/server/logging'
-require 'sidekiq/middleware/server/timeout'
+module Qless
+  module ThreadedWorker
+    ##
+    # The Processor receives a message from the Manager and actually
+    # processes it.  It calls Job#perform and runs the middleware
+    # chain.
+    class Processor
+      include Util
+      include Celluloid
 
-module Sidekiq
-  ##
-  # The Processor receives a message from the Manager and actually
-  # processes it.  It instantiates the worker, runs the middleware
-  # chain and then calls Sidekiq::Worker#perform.
-  class Processor
-    include Util
-    include Celluloid
-
-#    exclusive :process
-
-    def self.default_middleware
-      Middleware::Chain.new do |m|
-        m.add Middleware::Server::Logging
-        m.add Middleware::Server::RetryJobs
-        m.add Middleware::Server::ActiveRecord
-        m.add Middleware::Server::Timeout
-      end
-    end
-
-    def initialize(boss)
-      @boss = boss
-    end
-
-    def process(work)
-      msgstr = work.message
-      queue = work.queue_name
-      defer do
-        begin
-          msg = Sidekiq.load_json(msgstr)
-          klass  = msg['class'].constantize
-          worker = klass.new
-          worker.jid = msg['jid']
-
-          stats(worker, msg, queue) do
-            Sidekiq.server_middleware.invoke(worker, msg, queue) do
-              worker.perform(*cloned(msg['args']))
-            end
-          end
-        rescue Exception => ex
-          handle_exception(ex, msg || { :message => msgstr })
-          raise
-        ensure
-          work.acknowledge
-        end
-      end
-      @boss.async.processor_done(current_actor)
-    end
-
-    # See http://github.com/tarcieri/celluloid/issues/22
-    def inspect
-      "#<Processor #{to_s}>"
-    end
-
-    def to_s
-      @str ||= "#{hostname}:#{process_id}-#{Thread.current.object_id}:default"
-    end
-
-    private
-
-    def stats(worker, msg, queue)
-      redis do |conn|
-        conn.multi do
-          conn.sadd('workers', self)
-          conn.setex("worker:#{self}:started", EXPIRY, Time.now.to_s)
-          hash = {:queue => queue, :payload => msg, :run_at => Time.now.to_i }
-          conn.setex("worker:#{self}", EXPIRY, Sidekiq.dump_json(hash))
-        end
+      def initialize(boss)
+        @boss = boss
       end
 
-      begin
-        yield
-      rescue Exception
-        redis do |conn|
-          conn.multi do
-            conn.incrby("stat:failed", 1)
-            conn.incrby("stat:failed:#{Time.now.utc.to_date}", 1)
-          end
+      def process(job)
+        defer do
+          perform(job)
         end
-        raise
-      ensure
-        redis do |conn|
-          conn.multi do
-            conn.srem("workers", self)
-            conn.del("worker:#{self}")
-            conn.del("worker:#{self}:started")
-            conn.incrby("stat:processed", 1)
-            conn.incrby("stat:processed:#{Time.now.utc.to_date}", 1)
-          end
-        end
+        @boss.async.processor_done(current_actor)
       end
-    end
 
-    # Singleton classes are not clonable.
-    SINGLETON_CLASSES = [ NilClass, TrueClass, FalseClass, Symbol, Fixnum, Float, Bignum ].freeze
+      # Lifted right from Qless::Worker
+      def perform(job)
+        around_perform(job)
+      rescue *retryable_exception_classes(job)
+        job.retry
+      rescue Exception => error
+        fail_job(job, error)
+      else
+        try_complete(job)
+      end
 
-    # Clone the arguments passed to the worker so that if
-    # the message fails, what is pushed back onto Redis hasn't
-    # been mutated by the worker.
-    def cloned(ary)
-      ary.map do |val|
-        SINGLETON_CLASSES.include?(val.class) ? val : val.clone
+      def to_s
+        @str ||= "#{Socket.gethostname}:#{Process.pid}-#{Thread.current.object_id}:default"
+      end
+      
+      # See http://github.com/tarcieri/celluloid/issues/22
+      def inspect
+        "#<Processor #{to_s}>"
+      end
+
+      private
+
+      def retryable_exception_classes(job)
+        return [] unless job.klass.respond_to?(:retryable_exception_classes)
+        job.klass.retryable_exception_classes
+      rescue NameError => exn
+        []
+      end
+
+      def try_complete(job)
+        job.complete unless job.state_changed?
+      rescue Job::CantCompleteError => e
+        # There's not much we can do here. Complete fails in a few cases:
+        #   - The job is already failed (i.e. by another worker)
+        #   - The job is being worked on by another worker
+        #   - The job has been cancelled
+        #
+        # We don't want to (or are able to) fail the job with this error in
+        # any of these cases, so the best we can do is log the failure.
+        log "Failed to complete #{job.inspect}: #{e.message}"
+      end
+
+      # Allow middleware modules to be mixed in and override the
+      # definition of around_perform while providing a default
+      # implementation so our code can assume the method is present.
+      include Module.new {
+        def around_perform(job)
+          job.perform
+        end
+      }
+
+      def fail_job(job, error)
+        group = "#{job.klass_name}:#{error.class}"
+        message = "#{error.message}\n\n#{error.backtrace.join("\n")}"
+        log "Got #{group} failure from #{job.inspect}"
+        job.fail(group, message)
       end
     end
   end
 end
+
