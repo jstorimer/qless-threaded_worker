@@ -30,18 +30,6 @@ module Qless
       def output
         $stdout
       end
-
-#      def redis(&block)
-#        Sidekiq.redis(&block)
-#      end
-#
-#      def process_id
-#        Process.pid
-#      end
-#
-#      def hostname
-#        Socket.gethostname
-#      end
     end
   end
 end
