@@ -42,7 +42,7 @@ namespace :qless do
     # Set options via environment variables
     # The only required option is QUEUES; the
     # rest have reasonable defaults.
-    ENV['CONCURRENCY'] = 15 # number of processsor threads
+    ENV['CONCURRENCY'] = '15' # number of processsor threads
     ENV['REDIS_URL'] ||= 'redis://some-host:7000/3'
     ENV['QUEUES'] ||= 'fizz,buzz'
     ENV['JOB_RESERVER'] ||= 'Ordered'
