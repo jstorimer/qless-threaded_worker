@@ -1,14 +1,9 @@
-require 'qless/threaded_worker/manager'
-
-manager = Qless::ThreadedWorker::Manager.new
-manager.async.start
-
-overlord = Qless::ThreadedWorker::Overlord.new(manager)
-overlord.start # blocking call
+require 'qless/threaded_worker/util'
 
 module Qless
   module ThreadedWorker
     class SignalOverlord
+      include Util
       # The Overlord never exits. It just sleeps until
       # a signal arrives, then wakes up, handles it, goes
       # back to sleep.
@@ -41,7 +36,7 @@ module Qless
         # on the read end of the pipe. When a signal arrives,
         # it writes to the write end of the pipe to wake
         # the sleeping overlord.
-        @write_pipe, @read_pipe = IO.pipe
+        @read_pipe, @write_pipe = IO.pipe
 
         @manager = manager
         trap_signals
@@ -62,20 +57,24 @@ module Qless
             # handler. Just put the signal we received
             # into a list and wake the sleeping overlord.
             QLESS_SIGNALS << sig
+            log "Got #{sig}..."
             wake_up
           end
         end
       end
 
       def wake_up
+        log! 'Waking up overlord'
         @write_pipe.write('.')
       end
 
       def handle_signal
         case QLESS_SIGNALS.shift
         when :TERM, :INT
+          log 'Going for hard shutdown...'
           hard_shutdown
         when :QUIT
+          log 'Going for graceful shutdown...'
           graceful_shutdown
         end
       end
