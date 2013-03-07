@@ -20,7 +20,7 @@ module Qless
 
       def initialize(options={})
         log! options.inspect
-        @count = ENV.fetch('CONCURRENCY', 25)
+        @count = ENV.fetch('CONCURRENCY', 25).to_i
 
         @in_progress = {}
         @done = false

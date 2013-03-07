@@ -8,12 +8,11 @@ Gem::Specification.new do |gem|
   gem.version       = Qless::ThreadedWorker::VERSION
   gem.authors       = ["Jesse Storimer"]
   gem.email         = ["jesse@shopify.com"]
-  gem.description   = %q{TODO: Write a gem description}
-  gem.summary       = %q{TODO: Write a gem summary}
-  gem.homepage      = ""
+  gem.description   = %q{A alternate worker model for the Qless queueing library. Provides a multi-threaded worker based on Celluloid. Heavily inspired by Sidekiq.}
+  gem.summary       = gem.description
+  gem.homepage      = "http://github.com/Shopify/qless-threaded_worker"
 
   gem.files         = `git ls-files`.split($/)
-  gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.require_paths = ["lib"]
 
