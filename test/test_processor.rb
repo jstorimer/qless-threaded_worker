@@ -39,7 +39,18 @@ describe Qless::ThreadedWorker::Processor do
     assert_equal 1, $invokes
   end
 
-  it 'retries on exceptions'
-  it 'fails a non-retryable exception'
+  it 'fails on exception' do
+    @queue.put(BoomJob, 'boom' => true)
+
+    mgr = Object.new
+    mock(mgr).processor_done(@processor)
+    stub(@boss).async { mgr }
+
+    job = @queue.pop
+    mock(job).fail(anything, anything)
+    @processor.process(job)
+
+    assert_equal 0, $invokes
+  end
 end
 
