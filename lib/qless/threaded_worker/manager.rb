@@ -35,7 +35,7 @@ module Qless
           timeout = options[:timeout]
 
           @done = true
-          Sidekiq::Fetcher.done!
+          Fetcher.done!
           @fetcher.async.terminate if @fetcher.alive?
 
           log "Shutting down #{@ready.size} quiet workers"
