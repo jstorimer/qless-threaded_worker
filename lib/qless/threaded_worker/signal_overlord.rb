@@ -44,7 +44,7 @@ module Qless
 
       def start
         loop do
-          IO.select([@read_pipe])
+          @read_pipe.read(1)
           handle_signal
         end
       end
@@ -57,7 +57,7 @@ module Qless
             # handler. Just put the signal we received
             # into a list and wake the sleeping overlord.
             QLESS_SIGNALS << sig
-            log "Got #{sig}..."
+            log! "Received #{sig}..."
             wake_up
           end
         end
@@ -65,7 +65,7 @@ module Qless
 
       def wake_up
         log! 'Waking up overlord'
-        @write_pipe.write('.')
+        @write_pipe.write_nonblock('.')
       end
 
       def handle_signal
@@ -73,9 +73,11 @@ module Qless
         when :TERM, :INT
           log 'Going for hard shutdown...'
           hard_shutdown
+          exit
         when :QUIT
           log 'Going for graceful shutdown...'
           graceful_shutdown
+          exit
         end
       end
 
